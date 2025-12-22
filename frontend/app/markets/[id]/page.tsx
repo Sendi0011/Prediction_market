@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { OddsCalculator } from "@/components/OddsCalculator"
 import { usePrivy } from "@privy-io/react-auth"
 import { useRouter, useParams } from "next/navigation"
 import { useState, useEffect } from "react"
-import { ArrowLeft, TrendingUp, Users, Clock, Loader2 } from "lucide-react"
+import { ArrowLeft, TrendingUp, Clock, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useMarket } from "@/hooks/use-market"
 import { useOracle } from "@/hooks/use-oracle"
@@ -279,22 +280,17 @@ export default function MarketDetailPage() {
                 <p className="text-xs text-muted-foreground mt-2">Available Balance: {usdcBalance.toFixed(2)} USDC</p>
               </div>
 
-              {/* Pool Distribution */}
-              {selectedSide && (
-                <div className="p-4 rounded-lg bg-muted/50 mb-6">
-                  <h4 className="font-semibold text-foreground mb-3 text-sm">Pool Status</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">YES Pool</span>
-                      <span className="font-medium text-foreground">${(marketInfo.yesPool / 1000).toFixed(1)}k</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">NO Pool</span>
-                      <span className="font-medium text-foreground">${(marketInfo.noPool / 1000).toFixed(1)}k</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* ODDS CALCULATOR - NEW FEATURE */}
+              <div className="mb-6">
+                <OddsCalculator
+                  yesPool={marketInfo.yesPool}
+                  noPool={marketInfo.noPool}
+                  feeBP={marketInfo.feeBP}
+                  selectedSide={selectedSide}
+                  amount={amount}
+                  onAmountChange={setAmount}
+                />
+              </div>
 
               {/* Stake Button */}
               <Button
