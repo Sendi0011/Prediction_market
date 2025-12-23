@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { OddsCalculator } from "@/components/OddsCalculator"
+import { ProbabilityChart } from "@/components/ProbabilityChart"
 import { usePrivy } from "@privy-io/react-auth"
 import { useRouter, useParams } from "next/navigation"
 import { useState, useEffect } from "react"
@@ -13,6 +14,7 @@ import { ArrowLeft, TrendingUp, Clock, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useMarket } from "@/hooks/use-market"
 import { useOracle } from "@/hooks/use-oracle"
+import { useMarketHistory, generateMockHistory } from "@/hooks/use-market-history"
 import { usePublicClient } from 'wagmi'
 import { baseSepolia } from 'viem/chains'
 import { USDC_ADDRESS, USDC_ABI } from '@/lib/contracts'
@@ -28,7 +30,8 @@ export default function MarketDetailPage() {
   const publicClient = usePublicClient({ chainId: baseSepolia.id })
 
   const { getMarketInfo, getUserStake, stake, isLoading: isStaking } = useMarket(marketAddress)
-  const { getResolution, isResolutionFinalized } = useOracle()
+  const { getResolution } = useOracle()
+  const { history, isLoading: isLoadingHistory } = useMarketHistory(marketAddress)
 
   const [selectedSide, setSelectedSide] = useState<"yes" | "no" | null>(null)
   const [amount, setAmount] = useState("")
@@ -37,6 +40,14 @@ export default function MarketDetailPage() {
   const [userStake, setUserStake] = useState<any>(null)
   const [isResolved, setIsResolved] = useState(false)
   const [loading, setLoading] = useState(true)
+
+  // For demo purposes, generate mock data if no real history exists
+  // Remove this in production once you have real event data
+  const chartData = history.length > 0 
+    ? history 
+    : marketInfo 
+      ? generateMockHistory(marketInfo.yesProbability, 7)
+      : []
 
   // Fetch USDC balance
   useEffect(() => {
@@ -205,6 +216,13 @@ export default function MarketDetailPage() {
               )}
             </Card>
 
+            {/* PROBABILITY CHART - NEW FEATURE */}
+            <ProbabilityChart
+              data={chartData}
+              currentYesOdds={marketInfo.yesProbability}
+              currentNoOdds={100 - marketInfo.yesProbability}
+            />
+
             <div className="grid grid-cols-3 gap-4">
               <Card className="p-4 border border-border bg-card">
                 <div className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
@@ -260,7 +278,7 @@ export default function MarketDetailPage() {
                     selectedSide === "no"
                       ? "border-secondary bg-secondary/10 text-secondary"
                       : "border-border bg-muted/50 text-foreground hover:border-secondary/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  }`}
+                  }` }
                 >
                   Predict NO
                 </button>
@@ -280,7 +298,7 @@ export default function MarketDetailPage() {
                 <p className="text-xs text-muted-foreground mt-2">Available Balance: {usdcBalance.toFixed(2)} USDC</p>
               </div>
 
-              {/* ODDS CALCULATOR - NEW FEATURE */}
+              {/* ODDS CALCULATOR */}
               <div className="mb-6">
                 <OddsCalculator
                   yesPool={marketInfo.yesPool}
