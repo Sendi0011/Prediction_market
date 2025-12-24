@@ -164,5 +164,45 @@ export function AlertManager({
     toast.success('Alert deleted');
   };
 
+  // Get alert description
+  const getAlertDescription = (alert: MarketAlert): string => {
+    switch (alert.type) {
+      case 'odds_threshold':
+        return `Notify when YES odds go ${alert.oddsDirection} ${alert.targetOdds}%`;
+      case 'odds_movement':
+        return `Notify when odds move ${alert.movementPercent}%+ from current`;
+      case 'time_before_close':
+        return `Notify ${alert.hoursBeforeClose}h before market closes`;
+      case 'new_market':
+        return `Notify when new ${alert.category} market is created`;
+      case 'position_change':
+        return `Notify when position value changes ${alert.positionChangePercent}%+`;
+      default:
+        return 'Unknown alert type';
+    }
+  };
+
+  // Get alert icon
+  const getAlertIcon = (type: AlertType) => {
+    switch (type) {
+      case 'odds_threshold':
+      case 'odds_movement':
+        return <TrendingUp className="h-4 w-4" />;
+      case 'time_before_close':
+        return <Clock className="h-4 w-4" />;
+      case 'new_market':
+        return <Sparkles className="h-4 w-4" />;
+      case 'position_change':
+        return <Target className="h-4 w-4" />;
+    }
+  };
+
+  // Filter alerts for current market
+  const marketAlerts = alerts.filter(a => 
+    a.marketAddress === currentMarketAddress || a.type === 'new_market'
+  );
+  const activeAlerts = marketAlerts.filter(a => a.enabled);
+
   
+  );
 }
