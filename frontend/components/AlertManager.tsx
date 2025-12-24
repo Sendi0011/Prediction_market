@@ -447,7 +447,17 @@ export function AlertManager({
         </Card>
       )}
 
-      
+      {/* Empty State */}
+      {marketAlerts.length === 0 && (
+        <Card className="border-dashed">
+          <CardContent className="pt-6 pb-6 text-center">
+            <Bell className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground mb-1">No alerts set</p>
+            <p className="text-xs text-muted-foreground">
+              Create alerts to stay updated on market changes
+            </p>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
