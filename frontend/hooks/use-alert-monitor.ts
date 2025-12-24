@@ -33,7 +33,7 @@ export function useAlertMonitor(userAddress: string | undefined) {
     if (!userAddress) return []
 
     try {
-      const result = await window.storage.get(`alerts:${userAddress}`)
+      const result = await window.localStorage.get(`alerts:${userAddress}`)
       if (result?.value) {
         const alerts = JSON.parse(result.value) as MarketAlert[]
         alertsRef.current = alerts
@@ -63,7 +63,7 @@ export function useAlertMonitor(userAddress: string | undefined) {
     alertsRef.current = updatedAlerts
 
     try {
-      await window.storage.set(
+      await window.localStorage.set(
         `alerts:${userAddress}`,
         JSON.stringify(updatedAlerts)
       )
@@ -371,7 +371,7 @@ export function AlertBadge({ userAddress }: { userAddress: string | undefined })
       if (!userAddress) return
 
       try {
-        const result = await window.storage.get(`alerts:${userAddress}`)
+        const result = await window.localStorage.get(`alerts:${userAddress}`)
         if (result?.value) {
           const alerts = JSON.parse(result.value) as MarketAlert[]
           const activeCount = alerts.filter(a => a.enabled).length
