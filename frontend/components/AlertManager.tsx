@@ -203,6 +203,252 @@ export function AlertManager({
   );
   const activeAlerts = marketAlerts.filter(a => a.enabled);
 
-  
+  return (
+    <div className="space-y-4">
+      {/* Alert Summary Badge (for market page) */}
+      {currentMarketAddress && activeAlerts.length > 0 && (
+        <Badge variant="secondary" className="gap-2">
+          <BellRing className="h-3 w-3" />
+          {activeAlerts.length} active {activeAlerts.length === 1 ? 'alert' : 'alerts'}
+        </Badge>
+      )}
+
+      {/* Create Alert Dialog */}
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" className="w-full gap-2">
+            <Plus className="h-4 w-4" />
+            Create Alert
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Market Alert</DialogTitle>
+            <DialogDescription>
+              Get notified when specific conditions are met
+            </DialogDescription>
+          </DialogHeader>
+
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as AlertType)}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="odds_threshold" className="text-xs">
+                <TrendingUp className="h-3 w-3 mr-1" />
+                Odds
+              </TabsTrigger>
+              <TabsTrigger value="odds_movement" className="text-xs">
+                <Target className="h-3 w-3 mr-1" />
+                Movement
+              </TabsTrigger>
+              <TabsTrigger value="time_before_close" className="text-xs">
+                <Clock className="h-3 w-3 mr-1" />
+                Time
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Odds Threshold Alert */}
+            <TabsContent value="odds_threshold" className="space-y-4">
+              <div className="space-y-3">
+                <Label>Notify me when YES odds...</Label>
+                <Select value={oddsDirection} onValueChange={(v: 'above' | 'below') => setOddsDirection(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="below">Drop below</SelectItem>
+                    <SelectItem value="above">Rise above</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <div className="space-y-2">
+                  <Label>Target Percentage</Label>
+                  <div className="flex gap-2 items-center">
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={targetOdds}
+                      onChange={(e) => setTargetOdds(e.target.value)}
+                      className="flex-1"
+                    />
+                    <span className="text-muted-foreground">%</span>
+                  </div>
+                  {currentYesOdds && (
+                    <p className="text-xs text-muted-foreground">
+                      Current odds: {currentYesOdds.toFixed(1)}%
+                    </p>
+                  )}
+                </div>
+
+                <div className="p-3 rounded-lg bg-muted/50 text-sm">
+                  <strong>Example:</strong> If you set "below 40%", you'll be notified when 
+                  YES odds drop below 40% (meaning NO becomes more likely).
+                </div>
+              </div>
+
+              <Button onClick={() => createAlert('odds_threshold')} className="w-full">
+                Create Odds Alert
+              </Button>
+            </TabsContent>
+
+            {/* Odds Movement Alert */}
+            <TabsContent value="odds_movement" className="space-y-4">
+              <div className="space-y-3">
+                <Label>Notify me when odds move by...</Label>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={movementPercent}
+                    onChange={(e) => setMovementPercent(e.target.value)}
+                    className="flex-1"
+                  />
+                  <span className="text-muted-foreground">% or more</span>
+                </div>
+
+                <div className="p-3 rounded-lg bg-muted/50 text-sm">
+                  <strong>Example:</strong> If odds are currently 50% and you set 10%, 
+                  you'll be notified when they reach 60% or drop to 40%.
+                </div>
+              </div>
+
+              <Button onClick={() => createAlert('odds_movement')} className="w-full">
+                Create Movement Alert
+              </Button>
+            </TabsContent>
+
+            {/* Time Before Close Alert */}
+            <TabsContent value="time_before_close" className="space-y-4">
+              <div className="space-y-3">
+                <Label>Notify me this many hours before market closes</Label>
+                <Select value={hoursBeforeClose} onValueChange={setHoursBeforeClose}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 hour</SelectItem>
+                    <SelectItem value="6">6 hours</SelectItem>
+                    <SelectItem value="12">12 hours</SelectItem>
+                    <SelectItem value="24">24 hours (1 day)</SelectItem>
+                    <SelectItem value="48">48 hours (2 days)</SelectItem>
+                    <SelectItem value="168">168 hours (1 week)</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <div className="p-3 rounded-lg bg-muted/50 text-sm">
+                  <strong>Tip:</strong> Set this alert to remind yourself to make a final 
+                  prediction before the market closes!
+                </div>
+              </div>
+
+              <Button onClick={() => createAlert('time_before_close')} className="w-full">
+                Create Time Alert
+              </Button>
+            </TabsContent>
+          </Tabs>
+
+          {/* Additional Alert Types */}
+          <div className="space-y-3 pt-4 border-t">
+            <Label className="text-sm font-semibold">More Alert Types</Label>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setActiveTab('new_market');
+                  createAlert('new_market');
+                }}
+                className="h-auto py-4 flex-col gap-2"
+              >
+                <Sparkles className="h-5 w-5" />
+                <div className="text-xs text-center">
+                  New {category} Markets
+                </div>
+              </Button>
+
+              {currentMarketAddress && (
+                <Button
+                  variant="outline"
+                  onClick={() => createAlert('position_change')}
+                  className="h-auto py-4 flex-col gap-2"
+                >
+                  <Target className="h-5 w-5" />
+                  <div className="text-xs text-center">
+                    Position Value ±{positionChangePercent}%
+                  </div>
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Active Alerts List */}
+      {marketAlerts.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              Your Alerts
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {activeAlerts.length} active • {marketAlerts.length - activeAlerts.length} paused
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {marketAlerts.map((alert) => (
+              <div
+                key={alert.id}
+                className={`flex items-center gap-3 p-3 rounded-lg border transition ${
+                  alert.enabled
+                    ? 'bg-card border-border'
+                    : 'bg-muted/30 border-muted opacity-60'
+                }`}
+              >
+                <div className={`p-2 rounded-lg ${
+                  alert.enabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                }`}>
+                  {getAlertIcon(alert.type)}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {getAlertDescription(alert)}
+                  </p>
+                  {alert.marketTitle && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {alert.marketTitle}
+                    </p>
+                  )}
+                  {alert.triggerCount > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Triggered {alert.triggerCount} {alert.triggerCount === 1 ? 'time' : 'times'}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={alert.enabled}
+                    onCheckedChange={() => toggleAlert(alert.id)}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteAlert(alert.id)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      
+      )}
+    </div>
   );
 }
