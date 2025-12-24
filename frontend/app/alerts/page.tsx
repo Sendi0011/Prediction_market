@@ -23,7 +23,7 @@ export default function AlertsPage() {
       if (!user?.wallet?.address) return
 
       try {
-        const result = await window.storage.get(`alerts:${user.wallet.address}`)
+        const result = await window.localStorage.get(`alerts:${user.wallet.address}`)
         if (result?.value) {
           setAlerts(JSON.parse(result.value))
         }
