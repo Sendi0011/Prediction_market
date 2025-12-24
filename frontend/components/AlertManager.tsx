@@ -80,5 +80,46 @@ export function AlertManager({
   const [category, setCategory] = useState('Crypto');
   const [positionChangePercent, setPositionChangePercent] = useState('20');
 
- 
+  // Load alerts from storage
+  useEffect(() => {
+    const loadAlerts = async () => {
+      try {
+        const result = await window.storage.get(`alerts:${userAddress}`);
+        if (result?.value) {
+          setAlerts(JSON.parse(result.value));
+        }
+      } catch (error) {
+        console.log('No saved alerts or error loading:', error);
+      }
+    };
+    loadAlerts();
+  }, [userAddress]);
+
+  // Save alerts to storage
+  const saveAlerts = async (updatedAlerts: MarketAlert[]) => {
+    try {
+      await window.storage.set(
+        `alerts:${userAddress}`,
+        JSON.stringify(updatedAlerts)
+      );
+      setAlerts(updatedAlerts);
+    } catch (error) {
+      console.error('Error saving alerts:', error);
+      toast.error('Failed to save alert');
+    }
+  };
+
+  // Create new alert
+  const createAlert = (type: AlertType) => {
+    const newAlert: MarketAlert = {
+      id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      marketAddress: currentMarketAddress,
+      marketTitle: currentMarketTitle,
+      type,
+      enabled: true,
+      createdAt: Date.now(),
+      triggerCount: 0,
+    };
+
+    
 }
