@@ -121,5 +121,48 @@ export function AlertManager({
       triggerCount: 0,
     };
 
-    
+    // Set type-specific parameters
+    switch (type) {
+      case 'odds_threshold':
+        newAlert.targetOdds = parseFloat(targetOdds);
+        newAlert.oddsDirection = oddsDirection;
+        break;
+      case 'odds_movement':
+        newAlert.movementPercent = parseFloat(movementPercent);
+        break;
+      case 'time_before_close':
+        newAlert.hoursBeforeClose = parseFloat(hoursBeforeClose);
+        break;
+      case 'new_market':
+        newAlert.category = category;
+        newAlert.marketAddress = undefined; // Global alert
+        break;
+      case 'position_change':
+        newAlert.positionChangePercent = parseFloat(positionChangePercent);
+        break;
+    }
+
+    const updatedAlerts = [...alerts, newAlert];
+    saveAlerts(updatedAlerts);
+    toast.success('Alert created successfully!');
+    setIsOpen(false);
+  };
+
+  // Toggle alert
+  const toggleAlert = async (alertId: string) => {
+    const updatedAlerts = alerts.map(alert =>
+      alert.id === alertId ? { ...alert, enabled: !alert.enabled } : alert
+    );
+    saveAlerts(updatedAlerts);
+    toast.success(updatedAlerts.find(a => a.id === alertId)?.enabled ? 'Alert enabled' : 'Alert disabled');
+  };
+
+  // Delete alert
+  const deleteAlert = async (alertId: string) => {
+    const updatedAlerts = alerts.filter(alert => alert.id !== alertId);
+    saveAlerts(updatedAlerts);
+    toast.success('Alert deleted');
+  };
+
+  
 }
