@@ -7,6 +7,7 @@ import { SignUpButton } from "./signupButton"
 import { useRouter } from "next/navigation"
 import { Button } from "./ui/button"
 import { Shield } from "lucide-react"
+import { AlertBadge } from "@/components/AlertBadge"
 
 export function Navbar() {
   const { user, login, logout } = usePrivy()
@@ -39,6 +40,10 @@ export function Navbar() {
               Admin
             </Link>
           )}
+          <Link href="/alerts" className="flex items-center gap-2">
+  <AlertBadge userAddress={user?.wallet?.address} />
+  <span>Alerts</span>
+</Link>
         </div>
 
         <div className="flex items-center gap-2">
