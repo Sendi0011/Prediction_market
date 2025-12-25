@@ -31,6 +31,9 @@ export default function MarketDetailPage() {
   const marketAddress = params.id as Address
   const publicClient = usePublicClient({ chainId: baseSepolia.id })
 
+  // 🔔 Alert monitoring (NEW)
+  useAlertMonitor(user?.wallet?.address)
+
   const { getMarketInfo, getUserStake, stake, isLoading: isStaking } = useMarket(marketAddress)
   const { getResolution } = useOracle()
   const { history, isLoading: isLoadingHistory } = useMarketHistory(marketAddress)
@@ -252,6 +255,16 @@ export default function MarketDetailPage() {
           {/* Staking Sidebar */}
           <div className="lg:sticky lg:top-20 h-fit">
             <Card className="p-6 border border-border bg-card">
+
+            <div className="mb-6">
+      <AlertManager
+        userAddress={user?.wallet?.address || ''}
+        currentMarketAddress={marketAddress}
+        currentMarketTitle={marketInfo?.question}
+        currentYesOdds={marketInfo?.yesProbability}
+      />
+    </div>
+    
               <h2 className="text-xl font-bold text-foreground mb-6">Place Your Prediction</h2>
 
               {marketInfo.state !== 1 && (
