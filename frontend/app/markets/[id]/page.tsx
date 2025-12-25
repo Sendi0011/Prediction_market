@@ -230,7 +230,7 @@ export default function MarketDetailPage() {
                   </div>
                   <div className="w-full bg-border rounded-full h-3">
                     <div
-                      className="h-3 rounded-full bg-gradient-to-r from-primary to-accent transition-all"
+                      className="h-3 rounded-full bg-linear-to-r from-primary to-accent transition-all"
                       style={{ width: `${marketInfo.yesProbability}%` }}
                     />
                   </div>
