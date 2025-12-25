@@ -21,6 +21,8 @@ import { USDC_ADDRESS, USDC_ABI } from '@/lib/contracts'
 import { formatUsdc } from '@/lib/web3-utils'
 import { toast } from 'sonner'
 import type { Address } from 'viem'
+import { AlertManager } from "@/components/AlertManager"
+import { useAlertMonitor } from "@/hooks/use-alert-monitor"
 
 export default function MarketDetailPage() {
   const { user, login } = usePrivy()
