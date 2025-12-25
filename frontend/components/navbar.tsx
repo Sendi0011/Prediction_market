@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
-import { usePrivy } from "@privy-io/react-auth"
-import Link from "next/link"
-import { ThemeToggle } from "./theme-toggle"
-import { SignUpButton } from "./signupButton"
-import { useRouter } from "next/navigation"
-import { Button } from "./ui/button"
-import { Shield } from "lucide-react"
-import { AlertBadge } from "@/components/AlertBadge"
+import { usePrivy } from "@privy-io/react-auth";
+import Link from "next/link";
+import { ThemeToggle } from "./theme-toggle";
+import { SignUpButton } from "./signupButton";
+import { useRouter } from "next/navigation";
+import { Button } from "./ui/button";
+import { Shield } from "lucide-react";
+import { AlertBadge } from "@/components/AlertBadge";
 
 export function Navbar() {
-  const { user, login, logout } = usePrivy()
-  const router = useRouter()
+  const { user, login, logout } = usePrivy();
+  const router = useRouter();
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -22,7 +22,10 @@ export function Navbar() {
         </Link>
 
         <div className="hidden md:flex items-center gap-8">
-          <Link href="/markets" className="text-sm font-medium text-muted-foreground hover:text-foreground transition">
+          <Link
+            href="/markets"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition"
+          >
             Markets
           </Link>
           <Link
@@ -32,8 +35,8 @@ export function Navbar() {
             How It Works
           </Link>
           {user && (
-            <Link 
-              href="/admin" 
+            <Link
+              href="/admin"
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition flex items-center gap-1"
             >
               <Shield className="h-4 w-4" />
@@ -41,22 +44,25 @@ export function Navbar() {
             </Link>
           )}
           <Link href="/alerts" className="flex items-center gap-2">
-  <AlertBadge userAddress={user?.wallet?.address} />
-  <span>Alerts</span>
-</Link>
+            <AlertBadge userAddress={user?.wallet?.address} />
+            <span>Alerts</span>
+          </Link>
         </div>
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
           {user ? (
-            <Button onClick={() => router.push("/dashboard")} className="bg-primary hover:bg-primary/90">
+            <Button
+              onClick={() => router.push("/dashboard")}
+              className="bg-primary hover:bg-primary/90"
+            >
               Dashboard
             </Button>
           ) : (
-            <SignUpButton/>
+            <SignUpButton />
           )}
         </div>
       </div>
     </nav>
-  )
+  );
 }
