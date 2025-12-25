@@ -20,7 +20,7 @@ export function AlertBadge({ userAddress }: AlertBadgeProps) {
       if (!userAddress) return
 
       try {
-        const result = await window.storage.get(`alerts:${userAddress}`)
+        const result = await window.localStorage.get(`alerts:${userAddress}`)
         if (result?.value) {
           const alerts = JSON.parse(result.value) as MarketAlert[]
           const activeCount = alerts.filter(a => a.enabled).length

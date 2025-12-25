@@ -84,7 +84,7 @@ export function AlertManager({
   useEffect(() => {
     const loadAlerts = async () => {
       try {
-        const result = await window.storage.get(`alerts:${userAddress}`);
+        const result = await window.localStorage.get(`alerts:${userAddress}`);
         if (result?.value) {
           setAlerts(JSON.parse(result.value));
         }
@@ -98,7 +98,7 @@ export function AlertManager({
   // Save alerts to storage
   const saveAlerts = async (updatedAlerts: MarketAlert[]) => {
     try {
-      await window.storage.set(
+      await window.localStorage.set(
         `alerts:${userAddress}`,
         JSON.stringify(updatedAlerts)
       );
