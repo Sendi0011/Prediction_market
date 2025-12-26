@@ -708,7 +708,93 @@ export function PerformanceDashboard({ userAddress, positions }: PerformanceDash
             </CardContent>
           </Card>
 
-          
+          {/* Achievement Badges */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Award className="h-5 w-5" />
+                Achievements
+              </CardTitle>
+              <CardDescription>Milestones you've unlocked</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {stats.totalTrades >= 10 && (
+                  <div className="p-3 rounded-lg bg-muted text-center">
+                    <div className="text-2xl mb-1">🎯</div>
+                    <div className="text-xs font-medium">First 10 Trades</div>
+                  </div>
+                )}
+                {stats.wins >= 5 && (
+                  <div className="p-3 rounded-lg bg-muted text-center">
+                    <div className="text-2xl mb-1">🏆</div>
+                    <div className="text-xs font-medium">5 Wins</div>
+                  </div>
+                )}
+                {stats.winRate >= 60 && stats.totalTrades >= 10 && (
+                  <div className="p-3 rounded-lg bg-muted text-center">
+                    <div className="text-2xl mb-1">⭐</div>
+                    <div className="text-xs font-medium">60%+ Win Rate</div>
+                  </div>
+                )}
+                {stats.netProfit >= 100 && (
+                  <div className="p-3 rounded-lg bg-muted text-center">
+                    <div className="text-2xl mb-1">💰</div>
+                    <div className="text-xs font-medium">$100+ Profit</div>
+                  </div>
+                )}
+                {stats.averageROI >= 50 && stats.wins >= 5 && (
+                  <div className="p-3 rounded-lg bg-muted text-center">
+                    <div className="text-2xl mb-1">📈</div>
+                    <div className="text-xs font-medium">50%+ Avg ROI</div>
+                  </div>
+                )}
+                {stats.totalTrades >= 50 && (
+                  <div className="p-3 rounded-lg bg-muted text-center">
+                    <div className="text-2xl mb-1">🔥</div>
+                    <div className="text-xs font-medium">50 Trades</div>
+                  </div>
+                )}
+                {stats.bestTrade && ((stats.bestTrade.actualPayout! - stats.bestTrade.stakeAmount) / stats.bestTrade.stakeAmount) >= 2 && (
+                  <div className="p-3 rounded-lg bg-muted text-center">
+                    <div className="text-2xl mb-1">💎</div>
+                    <div className="text-xs font-medium">200%+ ROI Trade</div>
+                  </div>
+                )}
+                {stats.winRate >= 70 && stats.totalTrades >= 20 && (
+                  <div className="p-3 rounded-lg bg-muted text-center">
+                    <div className="text-2xl mb-1">👑</div>
+                    <div className="text-xs font-medium">Elite Trader</div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Trading Tips */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Trading Tips</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-3 text-sm">
+                <span className="text-primary">💡</span>
+                <p>Diversify across multiple markets to reduce risk exposure.</p>
+              </div>
+              <div className="flex gap-3 text-sm">
+                <span className="text-primary">💡</span>
+                <p>Markets with high volume tend to have more accurate odds.</p>
+              </div>
+              <div className="flex gap-3 text-sm">
+                <span className="text-primary">💡</span>
+                <p>Set alerts to catch favorable odds changes in your positions.</p>
+              </div>
+              <div className="flex gap-3 text-sm">
+                <span className="text-primary">💡</span>
+                <p>Review your worst trades to identify and avoid common mistakes.</p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
