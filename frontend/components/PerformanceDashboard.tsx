@@ -119,5 +119,69 @@ export function PerformanceDashboard({ userAddress, positions }: PerformanceDash
     };
   }, [positions]);
 
+  // Prepare chart data - Profit/Loss over time
+  const profitOverTime = useMemo(() => {
+    const sortedPositions = [...positions]
+      .filter(p => p.isResolved)
+      .sort((a, b) => a.timestamp - b.timestamp);
+
+    let runningProfit = 0;
+    return sortedPositions.map(position => {
+      const profit = position.outcome === 'WIN' 
+        ? (position.actualPayout! - position.stakeAmount)
+        : -position.stakeAmount;
+      
+      runningProfit += profit;
+      
+      return {
+        date: new Date(position.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        profit: runningProfit,
+        trade: position.marketTitle?.slice(0, 30) + '...',
+      };
+    });
+  }, [positions]);
+
+  // Win/Loss distribution by category
+  const categoryPerformance = useMemo(() => {
+    const categories = new Map<string, { wins: number; losses: number; profit: number }>();
+    
+    positions.filter(p => p.isResolved).forEach(position => {
+      // You'd get this from market metadata - using placeholder for now
+      const category = 'Crypto'; // TODO: Get from market
+      const current = categories.get(category) || { wins: 0, losses: 0, profit: 0 };
+      
+      if (position.outcome === 'WIN') {
+        current.wins++;
+        current.profit += (position.actualPayout! - position.stakeAmount);
+      } else {
+        current.losses++;
+        current.profit -= position.stakeAmount;
+      }
+      
+      categories.set(category, current);
+    });
+
+    return Array.from(categories.entries()).map(([category, data]) => ({
+      category,
+      wins: data.wins,
+      losses: data.losses,
+      winRate: ((data.wins / (data.wins + data.losses)) * 100).toFixed(1),
+      profit: data.profit,
+    }));
+  }, [positions]);
+
+  // Portfolio value over time
+  const portfolioValue = useMemo(() => {
+    const activePositions = positions.filter(p => !p.isResolved);
+    const totalStaked = activePositions.reduce((sum, p) => sum + p.stakeAmount, 0);
+    const totalPotential = activePositions.reduce((sum, p) => sum + p.potentialPayout, 0);
+    
+    return {
+      invested: totalStaked,
+      potential: totalPotential,
+      unrealizedPL: totalPotential - totalStaked,
+    };
+  }, [positions]);
+
   
 }
