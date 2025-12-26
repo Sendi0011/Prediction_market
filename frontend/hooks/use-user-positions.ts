@@ -266,7 +266,6 @@ export function useUserPositions(userAddress: Address | undefined) {
 
 /**
  * Generate mock positions for testing
- * Remove this in production once you have real data
  */
 export function generateMockPositions(): UserPosition[] {
   const now = Date.now()
