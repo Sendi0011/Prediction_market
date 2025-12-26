@@ -183,5 +183,39 @@ export function PerformanceDashboard({ userAddress, positions }: PerformanceDash
     };
   }, [positions]);
 
+  // Monthly performance
+  const monthlyStats = useMemo(() => {
+    const months = new Map<string, { profit: number; trades: number }>();
+    
+    positions.filter(p => p.isResolved).forEach(position => {
+      const month = new Date(position.timestamp).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      const current = months.get(month) || { profit: 0, trades: 0 };
+      
+      const profit = position.outcome === 'WIN' 
+        ? (position.actualPayout! - position.stakeAmount)
+        : -position.stakeAmount;
+      
+      current.profit += profit;
+      current.trades++;
+      
+      months.set(month, current);
+    });
+
+    return Array.from(months.entries()).map(([month, data]) => ({
+      month,
+      profit: data.profit,
+      trades: data.trades,
+      avgProfit: data.profit / data.trades,
+    }));
+  }, [positions]);
+
+  const COLORS = {
+    win: '#10b981',
+    loss: '#ef4444',
+    active: '#3b82f6',
+    profit: '#10b981',
+    loss2: '#ef4444',
+  };
+
   
 }
