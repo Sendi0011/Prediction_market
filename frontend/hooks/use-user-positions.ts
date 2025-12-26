@@ -264,3 +264,101 @@ export function useUserPositions(userAddress: Address | undefined) {
   }
 }
 
+/**
+ * Generate mock positions for testing
+ * Remove this in production once you have real data
+ */
+export function generateMockPositions(): UserPosition[] {
+  const now = Date.now()
+  const dayMs = 24 * 60 * 60 * 1000
+
+  return [
+    // Winning positions
+    {
+      marketAddress: '0x1234567890123456789012345678901234567890' as Address,
+      marketTitle: 'Will Bitcoin reach $100k by end of 2024?',
+      side: 'YES',
+      stakeAmount: 100,
+      currentOdds: 65,
+      potentialPayout: 153.85,
+      isResolved: true,
+      outcome: 'WIN',
+      actualPayout: 153.85,
+      timestamp: now - 30 * dayMs,
+      category: 'Crypto',
+      endsAt: Math.floor((now - 15 * dayMs) / 1000),
+      state: MARKET_STATE.RESOLVED,
+    },
+    {
+      marketAddress: '0x2345678901234567890123456789012345678901' as Address,
+      marketTitle: 'Will Ethereum ETF be approved in 2024?',
+      side: 'YES',
+      stakeAmount: 50,
+      currentOdds: 72,
+      potentialPayout: 69.44,
+      isResolved: true,
+      outcome: 'WIN',
+      actualPayout: 69.44,
+      timestamp: now - 45 * dayMs,
+      category: 'Crypto',
+      endsAt: Math.floor((now - 20 * dayMs) / 1000),
+      state: MARKET_STATE.RESOLVED,
+    },
+    // Losing positions
+    {
+      marketAddress: '0x3456789012345678901234567890123456789012' as Address,
+      marketTitle: 'Will stock market crash by Q4 2024?',
+      side: 'YES',
+      stakeAmount: 75,
+      currentOdds: 25,
+      potentialPayout: 0,
+      isResolved: true,
+      outcome: 'LOSS',
+      actualPayout: 0,
+      timestamp: now - 60 * dayMs,
+      category: 'Economy',
+      endsAt: Math.floor((now - 10 * dayMs) / 1000),
+      state: MARKET_STATE.RESOLVED,
+    },
+    // Active positions
+    {
+      marketAddress: '0x4567890123456789012345678901234567890123' as Address,
+      marketTitle: 'Will AI surpass human intelligence by 2025?',
+      side: 'NO',
+      stakeAmount: 120,
+      currentOdds: 45,
+      potentialPayout: 240,
+      isResolved: false,
+      timestamp: now - 5 * dayMs,
+      category: 'Technology',
+      endsAt: Math.floor((now + 30 * dayMs) / 1000),
+      state: MARKET_STATE.ACTIVE,
+    },
+    {
+      marketAddress: '0x5678901234567890123456789012345678901234' as Address,
+      marketTitle: 'Will Tesla stock hit $300 in 2025?',
+      side: 'YES',
+      stakeAmount: 80,
+      currentOdds: 58,
+      potentialPayout: 137.93,
+      isResolved: false,
+      timestamp: now - 3 * dayMs,
+      category: 'Stocks',
+      endsAt: Math.floor((now + 60 * dayMs) / 1000),
+      state: MARKET_STATE.ACTIVE,
+    },
+    {
+      marketAddress: '0x6789012345678901234567890123456789012345' as Address,
+      marketTitle: 'Will there be a major crypto regulation in 2025?',
+      side: 'YES',
+      stakeAmount: 150,
+      currentOdds: 68,
+      potentialPayout: 220.59,
+      isResolved: false,
+      timestamp: now - 2 * dayMs,
+      category: 'Crypto',
+      endsAt: Math.floor((now + 90 * dayMs) / 1000),
+      state: MARKET_STATE.ACTIVE,
+    },
+  ]
+}
