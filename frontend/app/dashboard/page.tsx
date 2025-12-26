@@ -2,226 +2,380 @@
 
 import { Navbar } from "@/components/navbar"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { PerformanceDashboard } from "@/components/PerformanceDashboard"
-import { useUserPositions, generateMockPositions } from "@/hooks/use-user-positions"
 import { usePrivy } from "@privy-io/react-auth"
-import { useState } from "react"
-import { Loader2, TrendingUp, Clock, DollarSign, Target } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Wallet, TrendingUp, Award, Clock, Copy, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { useState, useEffect } from "react"
+import { usePublicClient } from 'wagmi'
+import { baseSepolia } from 'viem/chains'
+import { USDC_ADDRESS, USDC_ABI, MARKET_ABI } from '@/lib/contracts'
+import { formatUsdc } from '@/lib/web3-utils'
+import { useFactory } from '@/hooks/use-factory'
+import { useMarket } from '@/hooks/use-market'
+import { AddFundsModal } from "@/components/AddFundsModal"
+import { toast } from 'sonner'
 import type { Address } from 'viem'
 
+interface UserPosition {
+  marketAddress: Address
+  yesStake: number
+  noStake: number
+  totalStake: number
+  side: number
+  canClaim: boolean
+  potentialPayout: number
+}
+
 export default function DashboardPage() {
-  const { user, login } = usePrivy()
-  const { positions, isLoading, refetch } = useUserPositions(user?.wallet?.address as Address)
+  const { user, logout } = usePrivy()
+  const router = useRouter()
+  const publicClient = usePublicClient({ chainId: baseSepolia.id })
+  const { getAllMarkets } = useFactory()
 
-  // Use mock data if no real positions (for testing)
-  const displayPositions = positions.length > 0 ? positions : generateMockPositions()
+  const [usdcBalance, setUsdcBalance] = useState<number>(0)
+  const [userPositions, setUserPositions] = useState<UserPosition[]>([])
+  const [loading, setLoading] = useState(true)
+  const [isAddFundsModalOpen, setIsAddFundsModalOpen] = useState(false)
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <main className="container mx-auto px-4 py-12 text-center">
-          <h2 className="text-2xl font-bold mb-4 text-foreground">Sign in to view your dashboard</h2>
-          <Button onClick={login} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            Login with Privy
-          </Button>
-        </main>
-      </div>
-    )
+  const address = user?.wallet?.address as Address | undefined
+
+  // Fetch USDC balance
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!address || !publicClient) return
+
+      try {
+        const balance = await publicClient.readContract({
+          address: USDC_ADDRESS,
+          abi: USDC_ABI,
+          functionName: 'balanceOf',
+          args: [address],
+        })
+        setUsdcBalance(formatUsdc(balance as bigint))
+      } catch (error) {
+        console.error('Error fetching USDC balance:', error)
+      }
+    }
+
+    fetchBalance()
+    const interval = setInterval(fetchBalance, 10000) // Refresh every 10s
+    return () => clearInterval(interval)
+  }, [address, publicClient])
+
+  // Fetch user positions
+  useEffect(() => {
+    const fetchPositions = async () => {
+      if (!address || !publicClient) return
+
+      setLoading(true)
+      try {
+        const markets = await getAllMarkets(0, 50)
+        
+        const positionsPromises = markets.map(async (marketAddress) => {
+          try {
+            const [yesStake, noStake, canClaimResult, potentialPayout] = await Promise.all([
+              publicClient.readContract({
+                address: marketAddress,
+                abi: MARKET_ABI,
+                functionName: 'stakes',
+                args: [address, 0], // YES
+              }),
+              publicClient.readContract({
+                address: marketAddress,
+                abi: MARKET_ABI,
+                functionName: 'stakes',
+                args: [address, 1], // NO
+              }),
+              publicClient.readContract({
+                address: marketAddress,
+                abi: MARKET_ABI,
+                functionName: 'canClaim',
+                args: [address],
+              }),
+              publicClient.readContract({
+                address: marketAddress,
+                abi: MARKET_ABI,
+                functionName: 'getPotentialPayout',
+                args: [address],
+              }),
+            ])
+
+            const yesStakeFormatted = formatUsdc(yesStake as bigint)
+            const noStakeFormatted = formatUsdc(noStake as bigint)
+            const totalStake = yesStakeFormatted + noStakeFormatted
+
+            if (totalStake === 0) return null
+
+            const side = yesStakeFormatted > 0 ? 0 : 1
+
+            return {
+              marketAddress,
+              yesStake: yesStakeFormatted,
+              noStake: noStakeFormatted,
+              totalStake,
+              side,
+              canClaim: canClaimResult as boolean,
+              potentialPayout: formatUsdc(potentialPayout as bigint),
+            }
+          } catch (error) {
+            console.error(`Error fetching position for ${marketAddress}:`, error)
+            return null
+          }
+        })
+
+        const positions = await Promise.all(positionsPromises)
+        const validPositions = positions.filter((p): p is UserPosition => p !== null)
+        setUserPositions(validPositions)
+      } catch (error) {
+        console.error('Error fetching positions:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPositions()
+  }, [address, publicClient, getAllMarkets])
+
+  useEffect(() => {
+    if (!user) {
+      router.push("/")
+    }
+  }, [user, router])
+
+  if (!user) return null
+
+  const totalStaked = userPositions.reduce((sum, p) => sum + p.totalStake, 0)
+  const totalPotentialEarnings = userPositions.reduce((sum, p) => sum + p.potentialPayout, 0)
+  const activePositions = userPositions.filter(p => !p.canClaim).length
+  const claimablePositions = userPositions.filter(p => p.canClaim)
+
+  const handleClaim = async (marketAddress: Address) => {
+    try {
+      const { claim, isLoading } = useMarket(marketAddress)
+      await claim()
+      toast.success('Claimed successfully!')
+      // Refresh positions
+      window.location.reload()
+    } catch (error: any) {
+      toast.error(error?.message || 'Claim failed')
+    }
   }
-
-  const activePositions = displayPositions.filter(p => !p.isResolved)
-  const resolvedPositions = displayPositions.filter(p => p.isResolved)
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <main className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">Your Dashboard</h1>
-              <p className="text-muted-foreground">
-                Track your performance and manage your positions
-              </p>
-            </div>
-            <Button onClick={refetch} variant="outline" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                'Refresh'
-              )}
-            </Button>
+      <main className="container mx-auto px-4 py-12">
+        {/* Dashboard Header */}
+        <div className="mb-8 flex justify-between items-start">
+          <div>
+            <h1 className="text-4xl font-bold text-foreground mb-2">Dashboard</h1>
+            <p className="text-muted-foreground">
+              Welcome back, {user?.email?.address || "Forecaster"}
+            </p>
           </div>
+          <Button
+            onClick={() => logout()}
+            variant="outline"
+            className="border-border text-foreground hover:bg-muted"
+          >
+            Logout
+          </Button>
         </div>
 
-        {displayPositions.length === 0 && !isLoading ? (
-          // Empty State
-          <Card className="border-dashed">
-            <CardContent className="pt-12 pb-12 text-center">
-              <Target className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
-              <h3 className="text-xl font-semibold mb-2">No Positions Yet</h3>
-              <p className="text-muted-foreground mb-6">
-                Start trading on prediction markets to see your performance here
-              </p>
-              <Button asChild>
-                <Link href="/markets">Browse Markets</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            {/* Performance Dashboard */}
-            <div className="mb-8">
-              <PerformanceDashboard
-                userAddress={user.wallet?.address || ''}
-                positions={displayPositions}
-              />
-            </div>
-
-            {/* Active Positions */}
-            {activePositions.length > 0 && (
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold mb-4">Active Positions</h2>
-                <div className="grid gap-4">
-                  {activePositions.map((position) => {
-                    const daysLeft = Math.ceil((position.endsAt * 1000 - Date.now()) / (24 * 60 * 60 * 1000))
-                    const unrealizedPL = position.potentialPayout - position.stakeAmount
-                    const unrealizedPLPercent = (unrealizedPL / position.stakeAmount) * 100
-
-                    return (
-                      <Card key={position.marketAddress} className="hover:shadow-md transition">
-                        <CardContent className="pt-6">
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex-1">
-                              <Link 
-                                href={`/markets/${position.marketAddress}`}
-                                className="text-lg font-semibold hover:text-primary transition"
-                              >
-                                {position.marketTitle}
-                              </Link>
-                              <div className="flex items-center gap-2 mt-2">
-                                <Badge variant={position.side === 'YES' ? 'default' : 'secondary'}>
-                                  {position.side}
-                                </Badge>
-                                <Badge variant="outline">{position.category}</Badge>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className={`text-lg font-bold ${unrealizedPL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                {unrealizedPL >= 0 ? '+' : ''}{unrealizedPL.toFixed(2)} USDC
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                {unrealizedPLPercent >= 0 ? '+' : ''}{unrealizedPLPercent.toFixed(1)}%
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-4 gap-4 pt-4 border-t">
-                            <div>
-                              <div className="text-xs text-muted-foreground mb-1">Staked</div>
-                              <div className="font-semibold">${position.stakeAmount.toFixed(2)}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-muted-foreground mb-1">Current Odds</div>
-                              <div className="font-semibold">{position.currentOdds.toFixed(1)}%</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-muted-foreground mb-1">Potential</div>
-                              <div className="font-semibold text-blue-600 dark:text-blue-400">
-                                ${position.potentialPayout.toFixed(2)}
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                Closes In
-                              </div>
-                              <div className="font-semibold">
-                                {daysLeft > 0 ? `${daysLeft}d` : 'Ended'}
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Resolved Positions */}
-            {resolvedPositions.length > 0 && (
+        {/* Stats Cards */}
+        <div className="grid md:grid-cols-4 gap-4 mb-8">
+          <Card className="p-6 border border-border bg-card">
+            <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold mb-4">Trade History</h2>
-                <div className="space-y-3">
-                  {resolvedPositions.slice(0, 10).map((position) => {
-                    const profit = position.outcome === 'WIN' 
-                      ? (position.actualPayout! - position.stakeAmount)
-                      : -position.stakeAmount
-                    const roi = (profit / position.stakeAmount) * 100
-
-                    return (
-                      <Card 
-                        key={position.marketAddress}
-                        className={position.outcome === 'WIN' ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'}
-                      >
-                        <CardContent className="pt-4 pb-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Badge variant={position.outcome === 'WIN' ? 'default' : 'destructive'}>
-                                  {position.outcome}
-                                </Badge>
-                                <Badge variant={position.side === 'YES' ? 'default' : 'secondary'} className="text-xs">
-                                  {position.side}
-                                </Badge>
-                                <span className="text-sm text-muted-foreground">
-                                  {new Date(position.timestamp).toLocaleDateString()}
-                                </span>
-                              </div>
-                              <Link 
-                                href={`/markets/${position.marketAddress}`}
-                                className="text-sm font-medium hover:text-primary transition"
-                              >
-                                {position.marketTitle}
-                              </Link>
-                            </div>
-                            <div className="text-right">
-                              <div className={`font-bold ${profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                {profit >= 0 ? '+' : ''}{profit.toFixed(2)} USDC
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                {roi >= 0 ? '+' : ''}{roi.toFixed(1)}% ROI
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
-
-                  {resolvedPositions.length > 10 && (
-                    <div className="text-center pt-4">
-                      <Button variant="outline">
-                        Load More History
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                <p className="text-sm text-muted-foreground mb-1">Wallet Balance</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {usdcBalance.toFixed(2)} USDC
+                </p>
               </div>
-            )}
-          </>
-        )}
+              <Wallet className="h-8 w-8 text-accent" />
+            </div>
+          </Card>
+          <Card className="p-6 border border-border bg-card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Active Predictions</p>
+                <p className="text-2xl font-bold text-foreground">{activePositions}</p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-primary" />
+            </div>
+          </Card>
+          <Card className="p-6 border border-border bg-card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Total Staked</p>
+                <p className="text-2xl font-bold text-foreground">{totalStaked.toFixed(2)} USDC</p>
+              </div>
+              <Award className="h-8 w-8 text-accent" />
+            </div>
+          </Card>
+          <Card className="p-6 border border-border bg-card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Potential Earnings</p>
+                <p className="text-2xl font-bold text-green-500">+{totalPotentialEarnings.toFixed(2)} USDC</p>
+              </div>
+              <Clock className="h-8 w-8 text-secondary" />
+            </div>
+          </Card>
+        </div>
+
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Active Predictions */}
+            <div>
+              <h2 className="text-2xl font-bold text-foreground mb-4">Your Positions</h2>
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : userPositions.length === 0 ? (
+                <Card className="p-12 border border-border bg-card text-center">
+                  <p className="text-muted-foreground mb-4">You don't have any active positions yet</p>
+                  <Button asChild>
+                    <Link href="/markets">Explore Markets</Link>
+                  </Button>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {userPositions.map((position) => (
+                    <Card
+                      key={position.marketAddress}
+                      className="p-6 border border-border bg-card hover:border-primary transition"
+                    >
+                      <div className="mb-4">
+                        <h3 className="font-semibold text-foreground mb-2">
+                          Market: {position.marketAddress.slice(0, 6)}...{position.marketAddress.slice(-4)}
+                        </h3>
+                        <Badge variant={position.side === 0 ? 'default' : 'secondary'}>
+                          Predicted {position.side === 0 ? 'YES' : 'NO'}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-4 gap-4 mb-4 text-sm">
+                        <div>
+                          <p className="text-muted-foreground mb-1">Your Stake</p>
+                          <p className="font-semibold text-foreground">
+                            {position.totalStake.toFixed(2)} USDC
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground mb-1">Potential Payout</p>
+                          <p className="font-semibold text-green-500">
+                            {position.potentialPayout.toFixed(2)} USDC
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground mb-1">Status</p>
+                          <p className="font-semibold text-foreground">
+                            {position.canClaim ? 'Claimable' : 'Active'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          {position.canClaim ? (
+                            <Button
+                              size="sm"
+                              onClick={() => handleClaim(position.marketAddress)}
+                              className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                            >
+                              Claim
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              asChild
+                            >
+                              <Link href={`/markets/${position.marketAddress}`}>View</Link>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Wallet Section */}
+            <Card className="p-6 border border-border bg-card">
+              <h3 className="font-bold text-foreground mb-4">Wallet</h3>
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground mb-1">Connected Wallet</p>
+                {address && (
+                  <div className="flex items-center justify-between">
+                    <p className="font-mono text-sm text-foreground truncate mr-2">
+                      {address.slice(0, 6)}...{address.slice(-4)}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(address)
+                        toast.success('Address copied!')
+                      }}
+                      className="px-2"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-6">
+                <p className="text-sm text-muted-foreground mb-1">Available Balance</p>
+                <p className="text-2xl font-bold text-foreground">{usdcBalance.toFixed(2)} USDC</p>
+              </div>
+
+              <Button
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground mb-2"
+                onClick={() => setIsAddFundsModalOpen(true)}
+              >
+                Add Funds
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full border-border text-foreground hover:bg-muted bg-transparent"
+                onClick={() => toast.info('Withdraw feature coming soon')}
+              >
+                Withdraw
+              </Button>
+            </Card>
+
+            {/* Quick Actions */}
+            <Card className="p-6 border border-border bg-card">
+              <h3 className="font-bold text-foreground mb-4">Quick Actions</h3>
+              <div className="space-y-2">
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/markets">Browse Markets</Link>
+                </Button>
+                <Button variant="outline" className="w-full" onClick={() => window.location.reload()}>
+                  Refresh Data
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </div>
       </main>
+
+      {address && (
+        <AddFundsModal
+          address={address}
+          isOpen={isAddFundsModalOpen}
+          onClose={() => setIsAddFundsModalOpen(false)}
+        />
+      )}
     </div>
   )
 }
